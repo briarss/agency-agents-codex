@@ -12,6 +12,7 @@
 # Tools:
 #   claude-code  -- Copy agents to ~/.claude/agents/
 #   copilot      -- Copy agents to ~/.github/agents/ and ~/.copilot/agents/
+#   codex        -- Convert and copy native agents + skills to ~/.codex/
 #   antigravity  -- Copy skills to ~/.gemini/antigravity/skills/
 #   gemini-cli   -- Install extension to ~/.gemini/extensions/agency-agents/
 #   opencode     -- Copy agents to .opencode/agents/ in current directory
@@ -20,6 +21,7 @@
 #   windsurf     -- Copy .windsurfrules to current directory
 #   openclaw     -- Copy workspaces to ~/.openclaw/agency-agents/
 #   qwen         -- Copy SubAgents to ~/.qwen/agents/ (user-wide) or .qwen/agents/ (project)
+#   kimi         -- Copy Kimi Code agents to ~/.config/kimi/agents/
 #   all          -- Install for all detected tools (default)
 #
 # Flags:
@@ -101,7 +103,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 INTEGRATIONS="$REPO_ROOT/integrations"
 
-ALL_TOOLS=(claude-code copilot antigravity gemini-cli opencode openclaw cursor aider windsurf qwen kimi)
+ALL_TOOLS=(claude-code copilot codex antigravity gemini-cli opencode openclaw cursor aider windsurf qwen kimi)
 
 # Standard agent category directories (keep sorted, sync with convert.sh / lint-agents.sh)
 AGENT_DIRS=(
@@ -113,7 +115,7 @@ AGENT_DIRS=(
 # Usage
 # ---------------------------------------------------------------------------
 usage() {
-  sed -n '3,32p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '3,34p' "$0" | sed 's/^# \{0,1\}//'
   exit 0
 }
 
@@ -140,6 +142,7 @@ check_integrations() {
 # ---------------------------------------------------------------------------
 detect_claude_code() { [[ -d "${HOME}/.claude" ]]; }
 detect_copilot()      { command -v code >/dev/null 2>&1 || [[ -d "${HOME}/.github" || -d "${HOME}/.copilot" ]]; }
+detect_codex()        { command -v codex >/dev/null 2>&1 || [[ -d "${HOME}/.codex" ]]; }
 detect_antigravity()  { [[ -d "${HOME}/.gemini/antigravity/skills" ]]; }
 detect_gemini_cli()   { command -v gemini >/dev/null 2>&1 || [[ -d "${HOME}/.gemini" ]]; }
 detect_cursor()       { command -v cursor >/dev/null 2>&1 || [[ -d "${HOME}/.cursor" ]]; }
@@ -154,6 +157,7 @@ is_detected() {
   case "$1" in
     claude-code) detect_claude_code ;;
     copilot)     detect_copilot     ;;
+    codex)       detect_codex       ;;
     antigravity) detect_antigravity ;;
     gemini-cli)  detect_gemini_cli  ;;
     opencode)    detect_opencode    ;;
@@ -172,6 +176,7 @@ tool_label() {
   case "$1" in
     claude-code) printf "%-14s  %s" "Claude Code"  "(claude.ai/code)"        ;;
     copilot)     printf "%-14s  %s" "Copilot"      "(~/.github + ~/.copilot)" ;;
+    codex)       printf "%-14s  %s" "Codex"        "(~/.codex/agents)"       ;;
     antigravity) printf "%-14s  %s" "Antigravity"  "(~/.gemini/antigravity)" ;;
     gemini-cli)  printf "%-14s  %s" "Gemini CLI"   "(gemini extension)"      ;;
     opencode)    printf "%-14s  %s" "OpenCode"     "(opencode.ai)"           ;;
@@ -339,6 +344,44 @@ install_copilot() {
   ok "Copilot: $count agents -> $dest_copilot"
   warn "Copilot: Verify VS Code setting 'chat.agentFilesLocations' includes your install path."
   dim  "         Open Settings (Ctrl/Cmd+,) -> search 'chat.agentFilesLocations'"
+}
+
+install_codex() {
+  local src="$INTEGRATIONS/codex/agents"
+  local src_skills="$INTEGRATIONS/codex/skills"
+  local dest="${HOME}/.codex/agents"
+  local skills_dest="${HOME}/.codex/skills"
+  local count=0
+  local skill_count=0
+
+  if [[ ! -d "$src" || ! -d "$src_skills" ]]; then
+    warn "Codex: generated agents missing. Running ./scripts/convert.sh --tool codex..."
+    "$SCRIPT_DIR/convert.sh" --tool codex >/dev/null
+  fi
+
+  [[ -d "$src" ]] || { err "integrations/codex/agents missing. Run ./scripts/convert.sh --tool codex first."; return 1; }
+  [[ -d "$src_skills" ]] || { err "integrations/codex/skills missing. Run ./scripts/convert.sh --tool codex first."; return 1; }
+
+  mkdir -p "$dest" "$skills_dest"
+  local f
+  while IFS= read -r -d '' f; do
+    cp "$f" "$dest/"
+    (( count++ )) || true
+  done < <(find "$src" -maxdepth 1 -name "agency-*.toml" -print0)
+
+  local d name
+  while IFS= read -r -d '' d; do
+    name="$(basename "$d")"
+    [[ -f "$d/SKILL.md" ]] || continue
+    mkdir -p "$skills_dest/$name"
+    cp "$d/SKILL.md" "$skills_dest/$name/SKILL.md"
+    (( skill_count++ )) || true
+  done < <(find "$src_skills" -mindepth 1 -maxdepth 1 -type d -print0)
+
+  ok "Codex: $count native agents -> $dest"
+  ok "Codex: $skill_count skills -> $skills_dest"
+  warn "Codex: start a new Codex session to refresh the agent and skill lists."
+  dim  "       Try \$agency or \$agency-frontend-developer."
 }
 
 install_antigravity() {
@@ -522,6 +565,7 @@ install_tool() {
   case "$1" in
     claude-code) install_claude_code ;;
     copilot)     install_copilot     ;;
+    codex)       install_codex       ;;
     antigravity) install_antigravity ;;
     gemini-cli)  install_gemini_cli  ;;
     opencode)    install_opencode    ;;

@@ -7,6 +7,7 @@ supported agentic coding tools.
 
 - **[Claude Code](#claude-code)** — `.md` agents, use the repo directly
 - **[GitHub Copilot](#github-copilot)** — `.md` agents, use the repo directly
+- **[Codex](#codex)** — native `.toml` subagents + `$agency-*` skill wrappers
 - **[Antigravity](#antigravity)** — `SKILL.md` per agent in `antigravity/`
 - **[Gemini CLI](#gemini-cli)** — extension + `SKILL.md` files in `gemini-cli/`
 - **[OpenCode](#opencode)** — `.md` agent files in `opencode/`
@@ -26,6 +27,7 @@ supported agentic coding tools.
 # Install a specific home-scoped tool
 ./scripts/install.sh --tool antigravity
 ./scripts/install.sh --tool copilot
+./scripts/install.sh --tool codex
 ./scripts/install.sh --tool openclaw
 ./scripts/install.sh --tool claude-code
 
@@ -84,6 +86,26 @@ directly into `~/.github/agents/` and `~/.copilot/agents/` without conversion.
 ```
 
 See [github-copilot/README.md](github-copilot/README.md) for details.
+
+---
+
+## Codex
+
+Each agent is converted into a Codex native subagent TOML file and a matching
+skill wrapper. Generated names use the `agency-` prefix to avoid overwriting
+existing Codex roles.
+
+```bash
+./scripts/install.sh --tool codex
+```
+
+On Windows PowerShell, you can run the one-shot installer directly:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-codex.ps1
+```
+
+See [codex/README.md](codex/README.md) for details.
 
 ---
 
